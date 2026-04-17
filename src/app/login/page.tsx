@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -9,6 +9,14 @@ import { Card } from "@/components/ui/Card";
 import { authApi } from "@/lib/api";
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const [isLogin, setIsLogin] = useState(true);
   const [role, setRole] = useState<"user" | "trainer">("user");
   const [email, setEmail] = useState("");
@@ -17,6 +25,8 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl");
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,7 +51,13 @@ export default function LoginPage() {
         setIsLoading(false);
       } else {
         router.refresh();
-        router.push("/dashboard");
+        if (callbackUrl) {
+          router.push(callbackUrl);
+        } else if (!isLogin && role === "trainer") {
+          router.push("/trainer/dashboard");
+        } else {
+          router.push("/dashboard");
+        }
       }
     } catch (err: any) {
       setError(err.message || "Authentication failed");

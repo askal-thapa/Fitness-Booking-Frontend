@@ -51,7 +51,7 @@ export default withAuth(
         const { pathname } = req.nextUrl;
         
         // Public paths that don't require auth
-        const publicPaths = ["/", "/login", "/trainers"];
+        const publicPaths = ["/", "/login", "/trainers", "/about", "/contact", "/careers", "/privacy", "/terms"];
         if (publicPaths.includes(pathname) || pathname.startsWith("/trainers/")) return true;
         
         // Require token for everything else
