@@ -169,15 +169,24 @@ export default function OnboardingPage() {
 
           {step === 3 && (
             <div className="space-y-3">
-              {["Sedentary", "Lightly Active", "Active", "Very Active"].map((level) => (
+              {[
+                { value: "sedentary", label: "Sedentary", desc: "Little to no exercise" },
+                { value: "light", label: "Lightly Active", desc: "Light exercise 1-3 days/week" },
+                { value: "moderate", label: "Moderately Active", desc: "Moderate exercise 3-5 days/week" },
+                { value: "active", label: "Active", desc: "Hard exercise 6-7 days/week" },
+                { value: "very_active", label: "Very Active", desc: "Intense exercise & physical job" },
+              ].map((level) => (
                 <Card
-                  key={level}
-                  selected={formData.activityLevel === level}
-                  onClick={() => setFormData({ ...formData, activityLevel: level })}
+                  key={level.value}
+                  selected={formData.activityLevel === level.value}
+                  onClick={() => setFormData({ ...formData, activityLevel: level.value })}
                   className="p-5 flex justify-between items-center"
                 >
-                  <span className="font-semibold">{level}</span>
-                  {formData.activityLevel === level && (
+                  <div>
+                    <span className="font-semibold">{level.label}</span>
+                    <p className="text-xs text-warm-gray mt-0.5">{level.desc}</p>
+                  </div>
+                  {formData.activityLevel === level.value && (
                     <div className="w-2.5 h-2.5 rounded-full bg-primary" />
                   )}
                 </Card>
@@ -187,14 +196,19 @@ export default function OnboardingPage() {
 
           {step === 4 && (
             <div className="grid grid-cols-1 gap-4">
-              {["Beginner", "Intermediate", "Advanced"].map((exp) => (
+              {[
+                { value: "beginner", label: "Beginner", desc: "New to fitness training" },
+                { value: "intermediate", label: "Intermediate", desc: "Some experience with workouts" },
+                { value: "advanced", label: "Advanced", desc: "Experienced and consistent" },
+              ].map((exp) => (
                 <Card
-                  key={exp}
-                  selected={formData.experienceLevel === exp}
-                  onClick={() => setFormData({ ...formData, experienceLevel: exp })}
+                  key={exp.value}
+                  selected={formData.experienceLevel === exp.value}
+                  onClick={() => setFormData({ ...formData, experienceLevel: exp.value })}
                   className="p-6 text-center"
                 >
-                  <span className="text-xl font-bold">{exp}</span>
+                  <span className="text-xl font-bold">{exp.label}</span>
+                  <p className="text-xs text-warm-gray mt-1">{exp.desc}</p>
                 </Card>
               ))}
             </div>
