@@ -17,7 +17,7 @@ export const authOptions: NextAuthOptions = {
         try {
           const res = await fetch(`${API_URL}/auth/login`, {
             method: "POST",
-            body: JSON.stringify(credentials),
+            body: JSON.stringify({ email: credentials.email, password: credentials.password }),
             headers: { "Content-Type": "application/json" },
           });
 
