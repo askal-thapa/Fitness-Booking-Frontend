@@ -65,7 +65,7 @@ export default function RootLayout({
       <body suppressHydrationWarning className="font-sans min-h-full flex flex-col bg-cream text-warm-dark overflow-x-hidden">
         <Providers>
             {children}
-            <FloatingAssistant />
+            {/* <FloatingAssistant /> */}
             <InstallPWA />
             <Toaster position="bottom-right" theme="light" richColors closeButton />
         </Providers>
