@@ -1,6 +1,8 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -13,7 +15,7 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.email || !credentials?.password) return null;
 
         try {
-          const res = await fetch("http://localhost:3001/auth/login", {
+          const res = await fetch(`${API_URL}/auth/login`, {
             method: "POST",
             body: JSON.stringify(credentials),
             headers: { "Content-Type": "application/json" },
@@ -22,8 +24,7 @@ export const authOptions: NextAuthOptions = {
           const data = await res.json();
 
           if (res.ok && data.access_token) {
-            // After login, we fetch "whoami" to ensure we have the latest profile
-            const meRes = await fetch("http://localhost:3001/auth/me", {
+            const meRes = await fetch(`${API_URL}/auth/me`, {
               headers: { 
                   "Authorization": `Bearer ${data.access_token}`,
                   "Content-Type": "application/json"
