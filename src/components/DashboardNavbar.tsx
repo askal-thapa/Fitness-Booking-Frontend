@@ -5,8 +5,8 @@ import { usePathname } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
 import React, { useEffect, useState } from 'react';
 import { onboardingApi } from '@/lib/api';
-import { Menu, X, LogOut, LayoutDashboard, Users, Calendar, User } from 'lucide-react';
-import { Avatar } from './ui/Avatar';
+import { Menu, X, LogOut, LayoutDashboard, Users, Calendar, User, Settings, HelpCircle } from 'lucide-react';
+import { ProfileMenu } from './ui/ProfileMenu';
 
 export default function DashboardNavbar() {
   const pathname = usePathname() || '';
@@ -16,6 +16,7 @@ export default function DashboardNavbar() {
 
   const user = session?.user as any;
   const fullName = user?.name || "User";
+  const email = user?.email || "";
   const roleDisplay = user?.role === "trainer" ? "Pro Trainer" : "Member";
 
   useEffect(() => {
@@ -29,6 +30,15 @@ export default function DashboardNavbar() {
   }, [user?.accessToken]);
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+
+  const menuItems = [
+    { label: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
+    { label: 'My Profile', href: '/dashboard/profile', icon: <User className="w-4 h-4" /> },
+    { label: 'My Bookings', href: '/dashboard/bookings', icon: <Calendar className="w-4 h-4" /> },
+    { label: 'Browse Trainers', href: '/trainers', icon: <Users className="w-4 h-4" /> },
+    { label: 'Help & Support', href: '/contact', icon: <HelpCircle className="w-4 h-4" />, divider: true },
+    { label: 'Logout', onClick: () => signOut({ callbackUrl: '/' }), icon: <LogOut className="w-4 h-4" />, variant: 'danger' as const, divider: true },
+  ];
 
   return (
     <nav className="w-full bg-white border-b border-cream-darker sticky top-0 z-40 shadow-sm">
@@ -74,23 +84,15 @@ export default function DashboardNavbar() {
           </div>
         </div>
 
-        {/* Desktop Profile Actions */}
-        <div className="hidden md:flex items-center gap-5">
-          <button
-            onClick={() => signOut({ callbackUrl: "/" })}
-            className="flex items-center gap-2 text-xs font-medium text-warm-gray hover:text-red-500 transition-all group/logout"
-          >
-            <span>Logout</span>
-            <LogOut className="w-4 h-4 group-hover/logout:translate-x-0.5 transition-transform" />
-          </button>
-
-          <Link href="/dashboard/profile" className="flex items-center gap-3 group">
-            <div className="text-right hidden sm:block">
-              <p className="text-sm font-semibold text-warm-dark group-hover:text-primary transition-colors">{fullName}</p>
-              <p className="text-xs text-warm-gray">{roleDisplay}</p>
-            </div>
-            <Avatar src={profileImage} name={fullName} size="sm" />
-          </Link>
+        {/* Desktop Profile Dropdown */}
+        <div className="hidden md:flex items-center">
+          <ProfileMenu
+            fullName={fullName}
+            subtitle={roleDisplay}
+            email={email}
+            avatarSrc={profileImage}
+            items={menuItems}
+          />
         </div>
 
         {/* Mobile Toggle Button */}

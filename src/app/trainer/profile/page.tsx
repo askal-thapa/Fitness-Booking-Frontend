@@ -1,39 +1,34 @@
 "use client";
 
-import DashboardNavbar from "@/components/DashboardNavbar";
+import TrainerNavbar from "@/components/TrainerNavbar";
 import { useSession } from "next-auth/react";
 import React, { useState, useEffect } from 'react';
-import { onboardingApi, bookingApi } from "@/lib/api";
+import { trainerApi, bookingApi } from "@/lib/api";
+import { TRAINING_FOCUS } from "@/lib/constants";
+import { Trainer } from "@/types";
 import { toast } from "sonner";
 
-export default function UserProfilePage() {
-  const { data: session } = useSession();
-  const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
-    age: "",
-    gender: "Male",
-    height: "",
-    weight: "",
-    fitnessGoal: "Muscle Building & Strength",
-    imageUrl: ""
-  });
+const LOCATIONS = ['Gym', 'Home', 'Virtual'];
 
-  // Preserved values from prior onboarding so updates don't drop them.
-  const [preserved, setPreserved] = useState({
-    activityLevel: "moderate",
-    experienceLevel: "intermediate",
-    healthConditions: [] as string[],
-    workoutType: "Gym",
-    dietPreference: "None",
+export default function TrainerProfilePage() {
+  const { data: session } = useSession();
+  const [trainer, setTrainer] = useState<Trainer | null>(null);
+  const [formData, setFormData] = useState({
+    specialty: '',
+    bio: '',
+    pricePerSession: 0,
+    intensity: 3,
+    focus: [] as string[],
+    location: 'Gym',
+    imageUrl: '',
   });
 
   const [isLoading, setIsLoading] = useState(true);
-  const [isOnboardingIncomplete, setIsOnboardingIncomplete] = useState(false);
+  const [isProfileIncomplete, setIsProfileIncomplete] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [sessionCount, setSessionCount] = useState(0);
+  const [completedCount, setCompletedCount] = useState(0);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const user = session?.user as any;
@@ -47,40 +42,31 @@ export default function UserProfilePage() {
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const [onboardingData, bookingsData] = await Promise.all([
-        onboardingApi.getMe(user.accessToken),
-        bookingApi.getMyBookings(user.accessToken)
+      const [trainerData, sessionsData] = await Promise.all([
+        trainerApi.getMe(user.accessToken),
+        bookingApi.getMySessions(user.accessToken),
       ]);
 
-      const isComplete = !!(onboardingData && onboardingData.age && onboardingData.height && onboardingData.weight);
-      setIsOnboardingIncomplete(!onboardingData || !isComplete);
+      setTrainer(trainerData);
+      setIsProfileIncomplete(
+        !trainerData.bio?.trim() ||
+        !trainerData.specialty?.trim() ||
+        (trainerData.focus || []).length === 0
+      );
 
       setFormData({
-        fullName: user.name || onboardingData.fullName || "",
-        email: user.email || onboardingData.email || "",
-        age: onboardingData.age?.toString() || "",
-        gender: "Male",
-        height: onboardingData.height?.toString() || "",
-        weight: onboardingData.weight?.toString() || "",
-        fitnessGoal: onboardingData.goal || "Muscle Building & Strength",
-        imageUrl: onboardingData.imageUrl || ""
+        specialty: trainerData.specialty || '',
+        bio: trainerData.bio || '',
+        pricePerSession: trainerData.pricePerSession || 0,
+        intensity: trainerData.intensity || 3,
+        focus: trainerData.focus || [],
+        location: trainerData.location || 'Gym',
+        imageUrl: trainerData.imageUrl || '',
       });
 
-      const parsedHealth = Array.isArray(onboardingData.healthConditions)
-        ? onboardingData.healthConditions
-        : [];
-      setPreserved({
-        activityLevel: onboardingData.activityLevel || "moderate",
-        experienceLevel: onboardingData.experienceLevel || "intermediate",
-        healthConditions: parsedHealth,
-        workoutType: onboardingData.workoutType || "Gym",
-        dietPreference: onboardingData.dietPreference || "None",
-      });
-
-      setSessionCount(bookingsData.length);
+      setCompletedCount(sessionsData.filter(s => s.status === 'completed').length);
     } catch (err) {
-      console.error("Failed to fetch profile data:", err);
-      setIsOnboardingIncomplete(true);
+      console.error("Failed to fetch trainer profile:", err);
     } finally {
       setIsLoading(false);
     }
@@ -93,12 +79,13 @@ export default function UserProfilePage() {
     try {
       setIsUploading(true);
       setUploadProgress(0);
-      const res = await onboardingApi.uploadProfileImage(
+      const res = await trainerApi.uploadProfileImage(
         file,
         (percent) => setUploadProgress(percent),
         user.accessToken
       );
       setFormData(prev => ({ ...prev, imageUrl: res.imageUrl }));
+      toast.success("Profile photo updated.");
     } catch (err) {
       console.error("Failed to upload image:", err);
       toast.error("Failed to upload image.");
@@ -114,32 +101,34 @@ export default function UserProfilePage() {
 
     setIsSaving(true);
     try {
-      await onboardingApi.save({
-        fullName: formData.fullName,
-        goal: formData.fitnessGoal,
-        age: parseInt(formData.age) || 0,
-        height: parseInt(formData.height) || 0,
-        weight: parseInt(formData.weight) || 0,
-        activityLevel: preserved.activityLevel,
-        experienceLevel: preserved.experienceLevel,
-        healthConditions: preserved.healthConditions,
-        workoutType: preserved.workoutType,
-        dietPreference: preserved.dietPreference,
-      }, user.accessToken);
-
-      setIsOnboardingIncomplete(false);
-      toast.success("Profile updated successfully!");
+      // imageUrl is uploaded via the dedicated /trainers/me/image endpoint
+      const { imageUrl: _omitted, ...payload } = formData;
+      await trainerApi.updateProfile(payload, user.accessToken);
+      await fetchData();
+      toast.success("Profile updated successfully.");
     } catch (err) {
       console.error("Failed to save profile:", err);
-      toast.error("Failed to update profile.");
+      toast.error("Failed to update profile: " + (err as Error).message);
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value, type } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'number' ? (value === '' ? 0 : parseFloat(value)) : value,
+    }));
+  };
+
+  const toggleFocus = (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      focus: prev.focus.includes(value)
+        ? prev.focus.filter(f => f !== value)
+        : [...prev.focus, value],
+    }));
   };
 
   if (isLoading) {
@@ -152,10 +141,10 @@ export default function UserProfilePage() {
 
   return (
     <div className="min-h-screen bg-cream pb-20">
-      <DashboardNavbar />
+      <TrainerNavbar />
 
       <main className="page-container">
-        {isOnboardingIncomplete && (
+        {isProfileIncomplete && (
           <div className="mb-8 bg-primary/5 border border-primary/15 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-4">
               <div className="w-11 h-11 bg-primary rounded-xl flex items-center justify-center text-white">
@@ -163,11 +152,11 @@ export default function UserProfilePage() {
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-warm-dark mb-0.5">Finish Your Profile Setup</h3>
-                <p className="text-warm-gray text-sm">Please provide your health metrics to get an accurate fitness plan.</p>
+                <p className="text-warm-gray text-sm">Set your bio, specialty, and focus areas to become visible to clients.</p>
               </div>
             </div>
             <button
-              onClick={() => document.getElementById('age')?.focus()}
+              onClick={() => document.getElementById('specialty')?.focus()}
               className="btn-primary text-sm"
             >
               Complete Now
@@ -176,8 +165,8 @@ export default function UserProfilePage() {
         )}
 
         <div className="mb-10">
-          <h1 className="section-header">My <span className="text-primary">Profile</span></h1>
-          <p className="text-warm-gray">Manage your personal metrics and fitness trajectory.</p>
+          <h1 className="section-header">Trainer <span className="text-primary">Profile</span></h1>
+          <p className="text-warm-gray">Manage how clients discover and connect with you.</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -185,11 +174,9 @@ export default function UserProfilePage() {
           {/* Profile Summary Sidebar */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-2xl border border-cream-darker shadow-sm overflow-hidden sticky top-24">
-              {/* Cover gradient */}
               <div className="h-24 bg-gradient-to-br from-primary to-primary-light relative" />
 
               <div className="px-6 pb-8 relative text-center">
-                {/* Avatar */}
                 <div
                   onClick={() => fileInputRef.current?.click()}
                   className="w-20 h-20 rounded-full border-[3px] border-white overflow-hidden bg-cream-dark shadow-md -mt-10 mb-4 mx-auto relative group cursor-pointer transition-transform hover:scale-105 duration-300"
@@ -197,12 +184,12 @@ export default function UserProfilePage() {
                   {formData.imageUrl ? (
                     <img
                       src={formData.imageUrl}
-                      alt="User Avatar"
+                      alt="Trainer Avatar"
                       className={`w-full h-full object-cover transition-opacity duration-300 ${isUploading ? 'opacity-30' : 'opacity-100'}`}
                     />
                   ) : (
                     <div className={`w-full h-full flex items-center justify-center bg-primary/10 text-primary font-bold text-lg transition-opacity duration-300 ${isUploading ? 'opacity-30' : 'opacity-100'}`}>
-                      {formData.fullName?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?'}
+                      {trainer?.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?'}
                     </div>
                   )}
                   <div className={`absolute inset-0 bg-warm-dark/50 flex flex-col items-center justify-center rounded-full transition-opacity duration-300 ${isUploading ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
@@ -224,39 +211,39 @@ export default function UserProfilePage() {
                   />
                 </div>
 
-                {/* Name & Email */}
-                <h2 className="text-lg font-bold text-warm-dark">{formData.fullName}</h2>
-                <p className="text-xs text-warm-gray mt-0.5 mb-5">{formData.email}</p>
+                <h2 className="text-lg font-bold text-warm-dark">{trainer?.name}</h2>
+                <p className="text-xs text-warm-gray mt-0.5 mb-5">{user?.email}</p>
 
-                {/* Quick Stats Row */}
                 <div className="grid grid-cols-3 gap-3 mb-6">
                   <div className="bg-cream rounded-xl p-3">
-                    <p className="text-lg font-bold text-primary">{sessionCount}</p>
+                    <p className="text-lg font-bold text-primary">{completedCount}</p>
                     <p className="text-[10px] text-warm-gray">Sessions</p>
                   </div>
                   <div className="bg-cream rounded-xl p-3">
-                    <p className="text-lg font-bold text-primary">{formData.weight || '--'}</p>
-                    <p className="text-[10px] text-warm-gray">Weight (kg)</p>
+                    <p className="text-lg font-bold text-primary flex items-baseline justify-center gap-0.5">
+                      {(trainer?.rating || 0).toFixed(1)}
+                      <span className="text-amber-400 text-xs">★</span>
+                    </p>
+                    <p className="text-[10px] text-warm-gray">Rating</p>
                   </div>
                   <div className="bg-cream rounded-xl p-3">
-                    <p className="text-lg font-bold text-primary">{formData.height || '--'}</p>
-                    <p className="text-[10px] text-warm-gray">Height (cm)</p>
+                    <p className="text-lg font-bold text-primary">£{formData.pricePerSession || 0}</p>
+                    <p className="text-[10px] text-warm-gray">Per Hour</p>
                   </div>
                 </div>
 
-                {/* Info Items */}
                 <div className="space-y-3 pt-5 border-t border-cream-darker text-left">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-warm-gray">Goal</span>
-                    <span className="text-warm-dark font-medium text-xs bg-primary/10 text-primary px-2.5 py-1 rounded-lg">{formData.fitnessGoal?.split('&')[0]?.trim() || 'Fitness'}</span>
+                    <span className="text-warm-gray">Location</span>
+                    <span className="text-warm-dark font-medium text-xs bg-primary/10 text-primary px-2.5 py-1 rounded-lg">{formData.location}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-warm-gray">Age</span>
-                    <span className="text-warm-dark font-medium">{formData.age || '--'} years</span>
+                    <span className="text-warm-gray">Intensity</span>
+                    <span className="text-warm-dark font-medium">Level {formData.intensity}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-warm-gray">Gender</span>
-                    <span className="text-warm-dark font-medium">{formData.gender}</span>
+                    <span className="text-warm-gray">Focus Areas</span>
+                    <span className="text-warm-dark font-medium">{formData.focus.length}</span>
                   </div>
                 </div>
               </div>
@@ -268,92 +255,90 @@ export default function UserProfilePage() {
             <form onSubmit={handleSave} className="card-premium">
               <h2 className="text-xl font-bold text-warm-dark mb-8 pb-4 border-b border-cream-darker flex items-center gap-3">
                 <span className="w-1 h-6 bg-primary rounded-full"></span>
-                Account Information
+                Public Profile
               </h2>
 
               <div className="space-y-6">
-                {/* Full Name */}
                 <div className="space-y-2">
-                  <label htmlFor="fullName" className="block text-xs font-semibold text-primary uppercase tracking-wider ml-1">Full Name</label>
+                  <label htmlFor="specialty" className="block text-xs font-semibold text-primary uppercase tracking-wider ml-1">Specialty Headline</label>
                   <input
                     type="text"
-                    id="fullName"
-                    name="fullName"
-                    value={formData.fullName}
+                    id="specialty"
+                    name="specialty"
+                    value={formData.specialty}
                     onChange={handleChange}
+                    placeholder="e.g. Performance & Conditioning Coach"
                     className="input-premium w-full"
                   />
                 </div>
 
-                {/* Email */}
                 <div className="space-y-2">
-                  <label htmlFor="email" className="block text-xs font-semibold text-primary uppercase tracking-wider ml-1">Email Address</label>
-                  <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    value={formData.email}
-                    disabled
-                    className="input-premium w-full opacity-50 cursor-not-allowed"
+                  <label htmlFor="bio" className="block text-xs font-semibold text-primary uppercase tracking-wider ml-1">Bio & Philosophy</label>
+                  <textarea
+                    id="bio"
+                    name="bio"
+                    value={formData.bio}
+                    onChange={handleChange}
+                    rows={5}
+                    placeholder="Describe your training methodology, certifications, and the kind of clients you love working with."
+                    className="input-premium w-full resize-none leading-relaxed"
                   />
-                  <p className="text-xs text-warm-gray ml-1">Contact support to change your email.</p>
                 </div>
 
                 <div className="pt-8 mt-4 border-t border-cream-darker">
                   <h3 className="text-lg font-bold text-warm-dark mb-6 flex items-center gap-3">
                     <span className="w-1 h-5 bg-primary/40 rounded-full"></span>
-                    Physical Metrics
+                    Pricing & Style
                   </h3>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="space-y-2">
-                      <label htmlFor="age" className="block text-xs font-semibold text-primary uppercase tracking-wider ml-1">Age</label>
+                      <label htmlFor="pricePerSession" className="block text-xs font-semibold text-primary uppercase tracking-wider ml-1">Hourly Rate (£)</label>
                       <input
                         type="number"
-                        id="age"
-                        name="age"
-                        value={formData.age}
+                        id="pricePerSession"
+                        name="pricePerSession"
+                        value={formData.pricePerSession || ''}
                         onChange={handleChange}
+                        min={0}
                         className="input-premium w-full"
                       />
                     </div>
                     <div className="space-y-2">
-                      <label htmlFor="gender" className="block text-xs font-semibold text-primary uppercase tracking-wider ml-1">Gender</label>
+                      <label htmlFor="intensity" className="block text-xs font-semibold text-primary uppercase tracking-wider ml-1">Intensity Level</label>
                       <select
-                        id="gender"
-                        name="gender"
-                        value={formData.gender}
+                        id="intensity"
+                        name="intensity"
+                        value={formData.intensity}
                         onChange={handleChange}
                         className="input-premium w-full appearance-none cursor-pointer"
                       >
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Non-binary">Non-binary</option>
-                        <option value="Prefer not to say">Prefer not to say</option>
+                        {[1,2,3,4,5].map(i => (
+                          <option key={i} value={i}>
+                            Level {i}{i === 1 ? ' — Light' : i === 3 ? ' — Intense' : i === 5 ? ' — Max' : ''}
+                          </option>
+                        ))}
                       </select>
                     </div>
+                  </div>
 
-                    <div className="space-y-2">
-                      <label htmlFor="height" className="block text-xs font-semibold text-primary uppercase tracking-wider ml-1">Height (cm)</label>
-                      <input
-                        type="number"
-                        id="height"
-                        name="height"
-                        value={formData.height}
-                        onChange={handleChange}
-                        className="input-premium w-full"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label htmlFor="weight" className="block text-xs font-semibold text-primary uppercase tracking-wider ml-1">Weight (kg)</label>
-                      <input
-                        type="number"
-                        id="weight"
-                        name="weight"
-                        value={formData.weight}
-                        onChange={handleChange}
-                        className="input-premium w-full"
-                      />
+                  <div className="space-y-2 mt-6">
+                    <label className="block text-xs font-semibold text-primary uppercase tracking-wider ml-1">Training Location</label>
+                    <div className="grid grid-cols-3 gap-3">
+                      {LOCATIONS.map(loc => (
+                        <button
+                          key={loc}
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, location: loc }))}
+                          className={`py-4 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all border-2 ${
+                            formData.location === loc
+                              ? 'bg-primary text-white border-primary shadow-sm'
+                              : 'bg-cream-dark border-transparent text-warm-gray hover:border-cream-darker hover:text-warm-dark'
+                          }`}
+                        >
+                          {loc}
+                        </button>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -361,30 +346,37 @@ export default function UserProfilePage() {
                 <div className="pt-8 mt-4 border-t border-cream-darker">
                   <h3 className="text-lg font-bold text-warm-dark mb-6 flex items-center gap-3">
                     <span className="w-1 h-5 bg-primary/40 rounded-full"></span>
-                    Fitness Strategy
+                    Training Focus
                   </h3>
+                  <p className="text-xs text-warm-gray mb-4 ml-1">Select the areas you specialize in. These power our matchmaking with clients.</p>
 
-                  <div className="space-y-2">
-                    <label htmlFor="fitnessGoal" className="block text-xs font-semibold text-primary uppercase tracking-wider ml-1">Primary Objective</label>
-                    <select
-                      id="fitnessGoal"
-                      name="fitnessGoal"
-                      value={formData.fitnessGoal}
-                      onChange={handleChange}
-                      className="input-premium w-full appearance-none cursor-pointer"
-                    >
-                      <option value="Weight Loss & Toning">Weight Loss & Toning</option>
-                      <option value="Muscle Building & Strength">Muscle Building & Strength</option>
-                      <option value="Endurance & Cardio">Endurance & Cardio</option>
-                      <option value="Flexibility & Mobility">Flexibility & Mobility</option>
-                      <option value="General Health & Wellness">General Health & Wellness</option>
-                      <option value="Event Preparation (e.g., Marathon)">Event Preparation (e.g., Marathon)</option>
-                    </select>
+                  <div className="flex flex-wrap gap-3">
+                    {TRAINING_FOCUS.map(f => {
+                      const active = formData.focus.includes(f.value);
+                      return (
+                        <button
+                          key={f.value}
+                          type="button"
+                          onClick={() => toggleFocus(f.value)}
+                          className={`px-5 py-3 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 border-2 ${
+                            active
+                              ? 'bg-primary text-white border-primary shadow-sm'
+                              : 'bg-cream-dark border-transparent text-warm-gray hover:border-cream-darker hover:text-warm-dark'
+                          }`}
+                        >
+                          <span className="text-base">{f.icon}</span> {f.label}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
                 <div className="pt-8 mt-6 flex flex-col sm:flex-row justify-end items-center gap-4 border-t border-cream-darker">
-                  <button type="button" className="btn-secondary w-full sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={() => fetchData()}
+                    className="btn-secondary w-full sm:w-auto"
+                  >
                     Discard Changes
                   </button>
                   <button
@@ -405,7 +397,6 @@ export default function UserProfilePage() {
                     )}
                   </button>
                 </div>
-
               </div>
             </form>
           </div>

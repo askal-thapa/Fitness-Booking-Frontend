@@ -5,8 +5,8 @@ import { usePathname } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
 import { trainerApi } from '@/lib/api';
 import React, { useEffect, useState } from 'react';
-import { Menu, X, LogOut, LayoutDashboard } from 'lucide-react';
-import { Avatar } from './ui/Avatar';
+import { Menu, X, LogOut, LayoutDashboard, User, Calendar, HelpCircle } from 'lucide-react';
+import { ProfileMenu } from './ui/ProfileMenu';
 
 export default function TrainerNavbar() {
   const pathname = usePathname() || '';
@@ -16,6 +16,7 @@ export default function TrainerNavbar() {
 
   const user = session?.user as any;
   const fullName = user?.name || "Trainer";
+  const email = user?.email || "";
   const roleDisplay = "Pro Trainer";
 
   useEffect(() => {
@@ -29,6 +30,14 @@ export default function TrainerNavbar() {
   }, [user?.accessToken]);
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+
+  const menuItems = [
+    { label: 'Overview', href: '/trainer/dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
+    { label: 'My Profile', href: '/trainer/profile', icon: <User className="w-4 h-4" /> },
+    { label: 'Public Page', href: user?.id ? `/trainers` : '/trainers', icon: <Calendar className="w-4 h-4" /> },
+    { label: 'Help & Support', href: '/contact', icon: <HelpCircle className="w-4 h-4" />, divider: true },
+    { label: 'Logout', onClick: () => signOut({ callbackUrl: '/' }), icon: <LogOut className="w-4 h-4" />, variant: 'danger' as const, divider: true },
+  ];
 
   return (
     <nav className="w-full bg-white border-b border-cream-darker sticky top-0 z-40 shadow-sm">
@@ -51,26 +60,28 @@ export default function TrainerNavbar() {
             >
               Overview
             </Link>
+            <Link
+              href="/trainer/profile"
+              className={`text-sm font-medium transition-all duration-200 px-4 py-2 rounded-lg ${
+                pathname === '/trainer/profile'
+                  ? 'text-primary bg-primary/5'
+                  : 'text-warm-gray hover:text-warm-dark hover:bg-cream-dark'
+              }`}
+            >
+              Profile
+            </Link>
           </div>
         </div>
 
-        {/* Desktop Profile Actions */}
-        <div className="hidden md:flex items-center gap-5">
-          <button
-            onClick={() => signOut({ callbackUrl: "/" })}
-            className="text-xs font-medium text-warm-gray hover:text-red-500 transition-colors flex items-center gap-2"
-          >
-            <span>Logout</span>
-            <LogOut className="w-4 h-4" />
-          </button>
-
-          <Link href="/trainer/dashboard" className="flex items-center gap-3 group">
-            <div className="text-right hidden sm:block">
-              <p className="text-sm font-semibold text-warm-dark group-hover:text-primary transition-colors">{fullName}</p>
-              <p className="text-xs text-warm-gray">{roleDisplay}</p>
-            </div>
-            <Avatar src={profileImage} name={fullName} size="sm" />
-          </Link>
+        {/* Desktop Profile Dropdown */}
+        <div className="hidden md:flex items-center">
+          <ProfileMenu
+            fullName={fullName}
+            subtitle={roleDisplay}
+            email={email}
+            avatarSrc={profileImage}
+            items={menuItems}
+          />
         </div>
 
         {/* Mobile Toggle Button */}
@@ -95,6 +106,14 @@ export default function TrainerNavbar() {
             >
               <LayoutDashboard className="w-5 h-5" />
               <span className="font-medium">Overview</span>
+            </Link>
+            <Link
+              href="/trainer/profile"
+              onClick={() => setIsMenuOpen(false)}
+              className={`flex items-center gap-3 p-3 rounded-xl transition-all ${pathname === '/trainer/profile' ? 'bg-primary/5 text-primary' : 'text-warm-gray hover:bg-cream-dark'}`}
+            >
+              <User className="w-5 h-5" />
+              <span className="font-medium">Profile</span>
             </Link>
 
             <div className="h-px bg-cream-darker my-2" />
