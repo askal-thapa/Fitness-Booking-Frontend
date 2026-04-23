@@ -40,7 +40,7 @@ function Avatar({ name, src, size = "md" }: { name: string; src?: string | null;
   if (src) return <img src={src} alt={name} className={`${sz} rounded-full object-cover shrink-0`} />;
   return (
     <div className={`${sz} rounded-full bg-primary/15 text-primary font-bold flex items-center justify-center shrink-0`}>
-      {name.charAt(0).toUpperCase()}
+      {name ? name.charAt(0).toUpperCase() : "?"}
     </div>
   );
 }
@@ -81,13 +81,13 @@ function ChatPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const withUserId = searchParams.get("with") ? parseInt(searchParams.get("with")!) : null;
-  const withName = searchParams.get("name") || "Trainer";
+  const withParam = searchParams.get("with");
+  const withUserId = withParam && !isNaN(parseInt(withParam)) ? parseInt(withParam) : null;
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [activeConv, setActiveConv] = useState<{ userId: number; name: string; image?: string | null } | null>(
-    withUserId ? { userId: withUserId, name: decodeURIComponent(withName) } : null,
+    withUserId ? { userId: withUserId, name: "" } : null,
   );
   const [input, setInput] = useState("");
   const [otherTyping, setOtherTyping] = useState(false);
@@ -142,17 +142,57 @@ function ChatPageInner() {
     }
   }, []);
 
+  // Fetch user info when withUserId is set (to get name and image without passing them in the URL)
+  useEffect(() => {
+    if (!withUserId || !token) return;
+    fetch(`${BACKEND_URL}/chat/user/${withUserId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.name) {
+          setActiveConv((prev) => {
+            if (!prev || prev.userId !== withUserId) return prev;
+            // Only update if name isn't already set from conversations
+            if (prev.name && prev.name !== "") return prev;
+            return { userId: withUserId, name: data.name, image: data.imageUrl || null };
+          });
+        }
+      })
+      .catch(() => {});
+  }, [withUserId, token]);
+
+  // Sync activeConv name/image from conversations list once loaded
+  useEffect(() => {
+    if (!activeConv) return;
+    const conv = conversations.find((c) => c.otherUserId === activeConv.userId);
+    if (conv) {
+      setActiveConv((prev) =>
+        prev
+          ? { ...prev, name: conv.otherUserName, image: conv.otherUserImage }
+          : prev,
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversations]);
+
   // Socket setup
   useEffect(() => {
     if (!token) return;
     const socket = io(BACKEND_URL, { auth: { token }, transports: ["websocket"] });
     socketRef.current = socket;
 
+    // Join active room as soon as socket connects (handles case where activeConv is set before connection)
+    socket.on("connect", () => {
+      if (activeConvRef.current) {
+        socket.emit("join_room", { otherUserId: activeConvRef.current.userId });
+      }
+    });
+
     socket.on("new_message", (msg: Message) => {
       const myId = myUserIdRef.current;
       const conv = activeConvRef.current;
 
-      // Add message to state if it's part of active conversation
       const isActiveConv =
         conv &&
         ((msg.fromUserId === conv.userId && msg.toUserId === myId) ||
@@ -164,6 +204,9 @@ function ChatPageInner() {
           return [...prev, msg];
         });
       }
+
+      // Refresh conversations sidebar for all new messages
+      fetchConversations();
 
       // Notification for incoming messages from others
       if (msg.fromUserId !== myId) {
@@ -178,7 +221,6 @@ function ChatPageInner() {
             description: msg.content.length > 60 ? msg.content.slice(0, 60) + "…" : msg.content,
           });
         }
-        fetchConversations();
       }
     });
 
@@ -241,7 +283,7 @@ function ChatPageInner() {
   const openConversation = (userId: number, name: string, image?: string | null) => {
     setActiveConv({ userId, name, image });
     setMobileView("chat");
-    router.replace(`/chat?with=${userId}&name=${encodeURIComponent(name)}`, { scroll: false });
+    router.replace(`/chat?with=${userId}`, { scroll: false });
   };
 
   if (status === "loading") {
@@ -337,9 +379,11 @@ function ChatPageInner() {
                 >
                   <ArrowLeft className="w-5 h-5 text-warm-dark" />
                 </button>
-                <Avatar name={activeConv.name} src={activeConv.image} size="md" />
+                <Avatar name={activeConv.name || "?"} src={activeConv.image} size="md" />
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-warm-dark leading-tight">{activeConv.name}</p>
+                  <p className="font-semibold text-warm-dark leading-tight">
+                    {activeConv.name || <span className="text-warm-gray text-sm">Loading…</span>}
+                  </p>
                   <p className="text-xs text-primary font-medium">
                     {otherTyping ? "typing…" : "Active now"}
                   </p>
@@ -386,7 +430,7 @@ function ChatPageInner() {
                             {!isMe && (
                               <div className="w-8 shrink-0">
                                 {showAvatar && (
-                                  <Avatar name={activeConv.name} src={activeConv.image} size="sm" />
+                                  <Avatar name={activeConv.name || "?"} src={activeConv.image} size="sm" />
                                 )}
                               </div>
                             )}
@@ -417,7 +461,7 @@ function ChatPageInner() {
                 {otherTyping && (
                   <div className="flex items-end gap-2 justify-start">
                     <div className="w-8 shrink-0">
-                      <Avatar name={activeConv.name} src={activeConv.image} size="sm" />
+                      <Avatar name={activeConv.name || "?"} src={activeConv.image} size="sm" />
                     </div>
                     <div className="bg-white border border-cream-darker rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
                       <div className="flex gap-1 items-center h-4">
@@ -478,7 +522,7 @@ function ChatPageInner() {
                     value={input}
                     onChange={handleInputChange}
                     onKeyDown={handleKeyDown}
-                    placeholder={`Message ${activeConv.name}…`}
+                    placeholder={activeConv.name ? `Message ${activeConv.name}…` : "Type a message…"}
                     className="flex-1 bg-transparent text-sm text-warm-dark placeholder:text-warm-gray/50 outline-none py-1.5"
                   />
 

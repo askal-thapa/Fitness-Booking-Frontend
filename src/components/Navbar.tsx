@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
 import React, { useEffect, useState, useRef } from 'react';
 import { onboardingApi } from '@/lib/api';
-import { Menu, X, LogOut, LayoutDashboard, User, Calendar, ChevronDown } from 'lucide-react';
+import { Menu, X, LogOut, LayoutDashboard, User, Calendar, ChevronDown, MessageCircle } from 'lucide-react';
 import { Avatar } from './ui/Avatar';
 
 export default function Navbar() {
@@ -53,6 +53,13 @@ export default function Navbar() {
             Browse Trainers
           </Link>
 
+          {session && (
+            <Link href="/chat" className="text-sm font-medium text-warm-gray hover:text-warm-dark transition-colors flex items-center gap-1.5">
+              <MessageCircle className="w-3.5 h-3.5" />
+              Messages
+            </Link>
+          )}
+
           {session ? (
             <div className="relative" ref={dropdownRef}>
               <button
@@ -75,6 +82,9 @@ export default function Navbar() {
                   </div>
                   <Link href={dashboardLink} onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-warm-gray hover:bg-cream hover:text-warm-dark transition-colors">
                     <LayoutDashboard className="w-4 h-4" /> Dashboard
+                  </Link>
+                  <Link href="/chat" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-warm-gray hover:bg-cream hover:text-warm-dark transition-colors">
+                    <MessageCircle className="w-4 h-4" /> Messages
                   </Link>
                   {!isTrainer && (
                     <>
@@ -129,6 +139,9 @@ export default function Navbar() {
                 </div>
                 <Link href={dashboardLink} onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 rounded-xl text-warm-gray hover:bg-cream hover:text-warm-dark transition-colors">
                   <LayoutDashboard className="w-4 h-4" /> Dashboard
+                </Link>
+                <Link href="/chat" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 p-3 rounded-xl text-warm-gray hover:bg-cream hover:text-warm-dark transition-colors">
+                  <MessageCircle className="w-4 h-4" /> Messages
                 </Link>
                 {!isTrainer && (
                   <>

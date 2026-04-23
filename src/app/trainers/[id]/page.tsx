@@ -373,7 +373,7 @@ export default function PublicTrainerDetailsPage() {
 
               {session?.user && trainer.userId && (
                 <button
-                  onClick={() => router.push(`/chat?with=${trainer.userId}&name=${encodeURIComponent(trainer.name)}`)}
+                  onClick={() => router.push(`/chat?with=${trainer.userId}`)}
                   className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-cream-darker bg-white hover:bg-cream-dark text-warm-dark font-semibold text-sm transition-all active:scale-95"
                 >
                   <MessageCircle className="w-4 h-4 text-primary" />

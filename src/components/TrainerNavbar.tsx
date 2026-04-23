@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
 import { trainerApi } from '@/lib/api';
 import React, { useEffect, useState } from 'react';
-import { Menu, X, LogOut, LayoutDashboard, User, Calendar, HelpCircle } from 'lucide-react';
+import { Menu, X, LogOut, LayoutDashboard, User, Calendar, HelpCircle, MessageCircle } from 'lucide-react';
 import { ProfileMenu } from './ui/ProfileMenu';
 
 export default function TrainerNavbar() {
@@ -34,6 +34,7 @@ export default function TrainerNavbar() {
   const menuItems = [
     { label: 'Overview', href: '/trainer/dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
     { label: 'My Profile', href: '/trainer/profile', icon: <User className="w-4 h-4" /> },
+    { label: 'Messages', href: '/chat', icon: <MessageCircle className="w-4 h-4" /> },
     { label: 'Public Page', href: user?.id ? `/trainers` : '/trainers', icon: <Calendar className="w-4 h-4" /> },
     { label: 'Help & Support', href: '/contact', icon: <HelpCircle className="w-4 h-4" />, divider: true },
     { label: 'Logout', onClick: () => signOut({ callbackUrl: '/' }), icon: <LogOut className="w-4 h-4" />, variant: 'danger' as const, divider: true },
@@ -69,6 +70,17 @@ export default function TrainerNavbar() {
               }`}
             >
               Profile
+            </Link>
+            <Link
+              href="/chat"
+              className={`text-sm font-medium transition-all duration-200 px-4 py-2 rounded-lg flex items-center gap-1.5 ${
+                pathname.startsWith('/chat')
+                  ? 'text-primary bg-primary/5'
+                  : 'text-warm-gray hover:text-warm-dark hover:bg-cream-dark'
+              }`}
+            >
+              <MessageCircle className="w-3.5 h-3.5" />
+              Messages
             </Link>
           </div>
         </div>
@@ -114,6 +126,14 @@ export default function TrainerNavbar() {
             >
               <User className="w-5 h-5" />
               <span className="font-medium">Profile</span>
+            </Link>
+            <Link
+              href="/chat"
+              onClick={() => setIsMenuOpen(false)}
+              className={`flex items-center gap-3 p-3 rounded-xl transition-all ${pathname.startsWith('/chat') ? 'bg-primary/5 text-primary' : 'text-warm-gray hover:bg-cream-dark'}`}
+            >
+              <MessageCircle className="w-5 h-5" />
+              <span className="font-medium">Messages</span>
             </Link>
 
             <div className="h-px bg-cream-darker my-2" />
