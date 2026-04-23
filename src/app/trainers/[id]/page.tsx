@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useSession } from 'next-auth/react';
 import { toast } from "sonner";
+import { MessageCircle } from "lucide-react";
 
 export default function PublicTrainerDetailsPage() {
   const { id } = useParams();
@@ -369,6 +370,16 @@ export default function PublicTrainerDetailsPage() {
               >
                 {isBooking ? 'Processing...' : `Book & Pay \u00A3${trainer.pricePerSession?.toFixed(2)}`}
               </Button>
+
+              {session?.user && trainer.userId && (
+                <button
+                  onClick={() => router.push(`/chat?with=${trainer.userId}&name=${encodeURIComponent(trainer.name)}`)}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-cream-darker bg-white hover:bg-cream-dark text-warm-dark font-semibold text-sm transition-all active:scale-95"
+                >
+                  <MessageCircle className="w-4 h-4 text-primary" />
+                  Message Trainer
+                </button>
+              )}
 
               {!session?.user && (
                 <p className="text-xs text-center text-warm-gray">

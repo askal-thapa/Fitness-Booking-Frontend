@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
 import React, { useEffect, useState } from 'react';
 import { onboardingApi } from '@/lib/api';
-import { Menu, X, LogOut, LayoutDashboard, Users, Calendar, User, Settings, HelpCircle } from 'lucide-react';
+import { Menu, X, LogOut, LayoutDashboard, Users, Calendar, User, HelpCircle, MessageCircle } from 'lucide-react';
 import { ProfileMenu } from './ui/ProfileMenu';
 
 export default function DashboardNavbar() {
@@ -81,6 +81,17 @@ export default function DashboardNavbar() {
             >
               Bookings
             </Link>
+            <Link
+              href="/chat"
+              className={`text-sm font-medium transition-all duration-200 px-4 py-2 rounded-lg flex items-center gap-1.5 ${
+                pathname.startsWith('/chat')
+                  ? 'text-primary bg-primary/5'
+                  : 'text-warm-gray hover:text-warm-dark hover:bg-cream-dark'
+              }`}
+            >
+              <MessageCircle className="w-3.5 h-3.5" />
+              Messages
+            </Link>
           </div>
         </div>
 
@@ -141,6 +152,14 @@ export default function DashboardNavbar() {
             >
               <User className="w-5 h-5" />
               <span className="font-medium">My Profile</span>
+            </Link>
+            <Link
+              href="/chat"
+              onClick={() => setIsMenuOpen(false)}
+              className={`flex items-center gap-3 p-3 rounded-xl transition-all ${pathname.startsWith('/chat') ? 'bg-primary/5 text-primary' : 'text-warm-gray hover:bg-cream-dark'}`}
+            >
+              <MessageCircle className="w-5 h-5" />
+              <span className="font-medium">Messages</span>
             </Link>
 
             <div className="h-px bg-cream-darker my-2" />

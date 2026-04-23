@@ -11,6 +11,7 @@ const inter = Inter({
 
 import { Providers } from "@/components/Providers";
 import { Toaster } from "sonner";
+import PushNotificationSetup from "@/components/PushNotificationSetup";
 
 export const viewport: Viewport = {
   themeColor: "#7C6A56",
@@ -67,6 +68,7 @@ export default function RootLayout({
             {children}
             {/* <FloatingAssistant /> */}
             <InstallPWA />
+            <PushNotificationSetup />
             <Toaster position="bottom-right" theme="light" richColors closeButton />
         </Providers>
       </body>

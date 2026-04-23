@@ -27,8 +27,25 @@ export interface Review {
   createdAt: string;
 }
 
+export interface Message {
+  id: number;
+  fromUserId: number;
+  toUserId: number;
+  content: string;
+  createdAt: string;
+}
+
+export interface Conversation {
+  otherUserId: number;
+  otherUserName: string;
+  otherUserImage: string | null;
+  lastMessage: string;
+  lastMessageAt: string;
+}
+
 export interface Trainer {
   id: number;
+  userId?: number;
   name: string;
   specialty: string;
   bio: string;

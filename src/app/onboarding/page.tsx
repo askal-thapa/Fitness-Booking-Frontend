@@ -32,7 +32,11 @@ export default function OnboardingPage() {
     weight: "",
     activityLevel: "",
     experienceLevel: "",
-    healthConditions: [] as string[],
+    healthConditions: {
+      painAreas: [] as string[],
+      conditions: [] as string[],
+      notes: "",
+    },
     workoutType: "",
     dietPreference: "",
   });
@@ -82,13 +86,38 @@ export default function OnboardingPage() {
     }
   };
 
-  const toggleHealth = (condition: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      healthConditions: prev.healthConditions.includes(condition)
-        ? prev.healthConditions.filter((h) => h !== condition)
-        : [...prev.healthConditions, condition],
-    }));
+  const togglePainArea = (area: string) => {
+    setFormData((prev) => {
+      const current = prev.healthConditions.painAreas;
+      return {
+        ...prev,
+        healthConditions: {
+          ...prev.healthConditions,
+          painAreas: current.includes(area)
+            ? current.filter((a) => a !== area)
+            : [...current, area],
+        },
+      };
+    });
+  };
+
+  const toggleCondition = (cond: string) => {
+    setFormData((prev) => {
+      const current = prev.healthConditions.conditions;
+      let next: string[];
+      if (cond === "None") {
+        next = current.includes("None") ? [] : ["None"];
+      } else {
+        const withoutNone = current.filter((c) => c !== "None");
+        next = withoutNone.includes(cond)
+          ? withoutNone.filter((c) => c !== cond)
+          : [...withoutNone, cond];
+      }
+      return {
+        ...prev,
+        healthConditions: { ...prev.healthConditions, conditions: next },
+      };
+    });
   };
 
   const progress = (step / STEPS.length) * 100;
@@ -215,22 +244,120 @@ export default function OnboardingPage() {
           )}
 
           {step === 5 && (
-            <div className="space-y-6">
-              <p className="text-sm text-warm-gray">Select all that apply to you</p>
-              <div className="flex flex-wrap gap-3">
-                {["Knee pain", "Back pain", "Shoulder injury", "Heart condition", "None"].map((condition) => (
-                  <button
-                    key={condition}
-                    onClick={() => toggleHealth(condition)}
-                    className={`px-5 py-2.5 rounded-full border transition-all font-medium text-sm ${
-                      formData.healthConditions.includes(condition)
-                        ? "bg-primary border-primary text-white"
-                        : "bg-white border-cream-darker text-warm-gray hover:border-primary/30"
-                    }`}
-                  >
-                    {condition}
-                  </button>
-                ))}
+            <div className="space-y-8">
+              {/* Pain areas */}
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm font-semibold text-warm-dark">Where do you feel pain or discomfort?</p>
+                  <p className="text-xs text-warm-gray mt-0.5">Select all that apply — you can pick multiple</p>
+                </div>
+
+                <div className="space-y-3">
+                  {/* Upper body */}
+                  <p className="text-[11px] font-semibold text-primary uppercase tracking-wider">Upper Body</p>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      "Neck", "Left Shoulder", "Right Shoulder",
+                      "Left Elbow", "Right Elbow", "Left Wrist", "Right Wrist",
+                      "Chest", "Upper Back",
+                    ].map((area) => (
+                      <button
+                        key={area}
+                        type="button"
+                        onClick={() => togglePainArea(area)}
+                        className={`px-3.5 py-2 rounded-xl border text-sm font-medium transition-all ${
+                          formData.healthConditions.painAreas.includes(area)
+                            ? "bg-accent/15 border-accent text-accent-light font-semibold"
+                            : "bg-white border-cream-darker text-warm-gray hover:border-primary/30"
+                        }`}
+                      >
+                        {formData.healthConditions.painAreas.includes(area) ? "✓ " : ""}{area}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Core / Lower body */}
+                  <p className="text-[11px] font-semibold text-primary uppercase tracking-wider pt-1">Core & Lower Body</p>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      "Lower Back", "Left Hip", "Right Hip",
+                      "Left Knee", "Right Knee", "Left Ankle", "Right Ankle",
+                    ].map((area) => (
+                      <button
+                        key={area}
+                        type="button"
+                        onClick={() => togglePainArea(area)}
+                        className={`px-3.5 py-2 rounded-xl border text-sm font-medium transition-all ${
+                          formData.healthConditions.painAreas.includes(area)
+                            ? "bg-accent/15 border-accent text-accent-light font-semibold"
+                            : "bg-white border-cream-darker text-warm-gray hover:border-primary/30"
+                        }`}
+                      >
+                        {formData.healthConditions.painAreas.includes(area) ? "✓ " : ""}{area}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {formData.healthConditions.painAreas.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 p-3 bg-accent/5 rounded-xl border border-accent/20">
+                    <span className="text-xs text-warm-gray font-medium mr-1">Selected:</span>
+                    {formData.healthConditions.painAreas.map((a) => (
+                      <span key={a} className="text-xs bg-accent/15 text-accent-light font-semibold px-2 py-0.5 rounded-lg">
+                        {a}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Divider */}
+              <div className="h-px bg-cream-darker" />
+
+              {/* Other conditions */}
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm font-semibold text-warm-dark">Any other health conditions?</p>
+                  <p className="text-xs text-warm-gray mt-0.5">Helps us match you with the right trainer</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {["Heart condition", "Diabetes", "Hypertension", "Asthma", "Osteoporosis", "None"].map((cond) => (
+                    <button
+                      key={cond}
+                      type="button"
+                      onClick={() => toggleCondition(cond)}
+                      className={`px-4 py-2 rounded-xl border text-sm font-medium transition-all ${
+                        formData.healthConditions.conditions.includes(cond)
+                          ? "bg-primary border-primary text-white"
+                          : "bg-white border-cream-darker text-warm-gray hover:border-primary/30"
+                      }`}
+                    >
+                      {cond}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="h-px bg-cream-darker" />
+
+              {/* Free text */}
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-warm-dark">
+                  Additional details <span className="text-warm-gray font-normal">(optional)</span>
+                </label>
+                <textarea
+                  value={formData.healthConditions.notes}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      healthConditions: { ...prev.healthConditions, notes: e.target.value },
+                    }))
+                  }
+                  rows={3}
+                  placeholder="e.g. Had knee surgery in 2022, chronic lower back pain for 2 years, mild sciatica…"
+                  className="w-full bg-cream border border-cream-darker text-warm-dark text-sm rounded-xl px-4 py-3 outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all placeholder:text-warm-gray/50 resize-none leading-relaxed"
+                />
               </div>
             </div>
           )}
