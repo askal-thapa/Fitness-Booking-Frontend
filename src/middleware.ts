@@ -53,6 +53,8 @@ export default withAuth(
         // Public paths that don't require auth
         const publicPaths = ["/", "/login", "/trainers", "/about", "/contact", "/careers", "/privacy", "/terms"];
         if (publicPaths.includes(pathname) || pathname.startsWith("/trainers/")) return true;
+        // /chat requires auth (handled by matcher)
+        if (pathname === "/chat") return !!token;
         
         // Require token for everything else
         return !!token;
@@ -66,6 +68,7 @@ export const config = {
     "/dashboard/:path*",
     "/onboarding",
     "/trainer/:path*",
+    "/chat",
     "/login",
   ],
 };

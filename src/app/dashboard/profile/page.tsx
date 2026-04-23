@@ -2,12 +2,14 @@
 
 import DashboardNavbar from "@/components/DashboardNavbar";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import React, { useState, useEffect } from 'react';
 import { onboardingApi, bookingApi } from "@/lib/api";
 import { toast } from "sonner";
 
 export default function UserProfilePage() {
   const { data: session } = useSession();
+  const router = useRouter();
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -37,9 +39,14 @@ export default function UserProfilePage() {
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const user = session?.user as any;
+  const isTrainer = user?.role === "trainer";
 
   useEffect(() => {
-    if (user?.accessToken) {
+    if (isTrainer) router.replace("/trainer/dashboard");
+  }, [isTrainer, router]);
+
+  useEffect(() => {
+    if (user?.accessToken && !isTrainer) {
       fetchData();
     }
   }, [user?.accessToken]);
@@ -141,6 +148,8 @@ export default function UserProfilePage() {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
+
+  if (isTrainer) return null;
 
   if (isLoading) {
     return (

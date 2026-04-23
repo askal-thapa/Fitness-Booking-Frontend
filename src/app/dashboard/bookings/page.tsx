@@ -4,7 +4,7 @@ import DashboardNavbar from "@/components/DashboardNavbar";
 import React, { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSession } from "next-auth/react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { bookingApi, trainerApi } from "@/lib/api";
 import { toast } from "sonner";
 import { Booking } from "@/types";
@@ -20,6 +20,7 @@ export default function BookingsPage() {
 
 function BookingsContent() {
   const { data: session } = useSession();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<'Upcoming' | 'Past' | 'Cancelled'>('Upcoming');
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -30,6 +31,13 @@ function BookingsContent() {
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
   const [cancelReason, setCancelReason] = useState('');
+
+  const user = session?.user as any;
+  const isTrainer = user?.role === "trainer";
+
+  useEffect(() => {
+    if (isTrainer) router.replace("/trainer/dashboard");
+  }, [isTrainer, router]);
 
   // Show success banner when redirected from Stripe
   useEffect(() => {
@@ -45,7 +53,6 @@ function BookingsContent() {
     }
   }, [searchParams]);
   const [activeBookingId, setActiveBookingId] = useState<number | null>(null);
-  const user = session?.user as any;
 
   const formatDate = (dateStr: string) => {
     try {
@@ -154,6 +161,8 @@ function BookingsContent() {
         return null;
     }
   };
+
+  if (isTrainer) return null;
 
   return (
     <div className="min-h-screen bg-cream">

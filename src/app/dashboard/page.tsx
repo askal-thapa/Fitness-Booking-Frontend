@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import DashboardNavbar from "@/components/DashboardNavbar";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -11,6 +12,7 @@ import Link from "next/link";
 
 export default function DashboardPage() {
   const { data: session } = useSession();
+  const router = useRouter();
   const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [onboarding, setOnboarding] = useState<OnboardingData | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -18,9 +20,14 @@ export default function DashboardPage() {
 
   const userName = session?.user?.name || "User";
   const user = session?.user as any;
+  const isTrainer = user?.role === "trainer";
 
   useEffect(() => {
-    if (!user?.accessToken) return;
+    if (isTrainer) router.replace("/trainer/dashboard");
+  }, [isTrainer, router]);
+
+  useEffect(() => {
+    if (!user?.accessToken || isTrainer) return;
 
     const fetchData = async () => {
       try {
@@ -50,6 +57,8 @@ export default function DashboardPage() {
 
   const isComplete = !!(onboarding && onboarding.age && onboarding.height && onboarding.weight);
   const showBanner = !isComplete;
+
+  if (isTrainer) return null;
 
   return (
     <div className="min-h-screen bg-cream flex flex-col">

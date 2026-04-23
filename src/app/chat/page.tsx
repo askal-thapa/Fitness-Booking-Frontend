@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { io, Socket } from "socket.io-client";
 import { toast } from "sonner";
 import DashboardNavbar from "@/components/DashboardNavbar";
+import TrainerNavbar from "@/components/TrainerNavbar";
 import { Message, Conversation } from "@/types";
 import { Send, Smile, ArrowLeft, MessageCircle, X } from "lucide-react";
 
@@ -106,6 +107,7 @@ function ChatPageInner() {
   const user = session?.user as any;
   const myUserId = user?.id ? parseInt(user.id) : null;
   const token = user?.accessToken as string | undefined;
+  const isTrainer = user?.role === "trainer";
 
   useEffect(() => { activeConvRef.current = activeConv; }, [activeConv]);
   useEffect(() => { myUserIdRef.current = myUserId; }, [myUserId]);
@@ -142,7 +144,7 @@ function ChatPageInner() {
     }
   }, []);
 
-  // Fetch user info when withUserId is set (to get name and image without passing them in the URL)
+  // Fetch user info to get name/image when only a userId is in the URL
   useEffect(() => {
     if (!withUserId || !token) return;
     fetch(`${BACKEND_URL}/chat/user/${withUserId}`, {
@@ -153,7 +155,6 @@ function ChatPageInner() {
         if (data?.name) {
           setActiveConv((prev) => {
             if (!prev || prev.userId !== withUserId) return prev;
-            // Only update if name isn't already set from conversations
             if (prev.name && prev.name !== "") return prev;
             return { userId: withUserId, name: data.name, image: data.imageUrl || null };
           });
@@ -168,9 +169,7 @@ function ChatPageInner() {
     const conv = conversations.find((c) => c.otherUserId === activeConv.userId);
     if (conv) {
       setActiveConv((prev) =>
-        prev
-          ? { ...prev, name: conv.otherUserName, image: conv.otherUserImage }
-          : prev,
+        prev ? { ...prev, name: conv.otherUserName, image: conv.otherUserImage } : prev,
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -182,7 +181,7 @@ function ChatPageInner() {
     const socket = io(BACKEND_URL, { auth: { token }, transports: ["websocket"] });
     socketRef.current = socket;
 
-    // Join active room as soon as socket connects (handles case where activeConv is set before connection)
+    // Join active room as soon as socket connects
     socket.on("connect", () => {
       if (activeConvRef.current) {
         socket.emit("join_room", { otherUserId: activeConvRef.current.userId });
@@ -205,10 +204,9 @@ function ChatPageInner() {
         });
       }
 
-      // Refresh conversations sidebar for all new messages
+      // Refresh sidebar for all new messages (sent + received)
       fetchConversations();
 
-      // Notification for incoming messages from others
       if (msg.fromUserId !== myId) {
         if (!document.hasFocus() || document.visibilityState === "hidden") {
           playPing();
@@ -288,7 +286,7 @@ function ChatPageInner() {
 
   if (status === "loading") {
     return (
-      <div className="min-h-screen bg-cream flex items-center justify-center">
+      <div className="h-screen bg-cream flex items-center justify-center">
         <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
       </div>
     );
@@ -297,25 +295,25 @@ function ChatPageInner() {
   const messageGroups = groupMessages(messages);
 
   return (
-    <div className="min-h-screen bg-cream flex flex-col">
-      <DashboardNavbar />
+    <div className="h-screen flex flex-col overflow-hidden bg-cream">
+      {isTrainer ? <TrainerNavbar /> : <DashboardNavbar />}
 
-      <div className="flex-1 flex overflow-hidden" style={{ height: "calc(100vh - 64px)" }}>
-        {/* Sidebar — conversation list */}
+      <div className="flex-1 flex overflow-hidden min-h-0">
+        {/* Sidebar */}
         <aside
           className={`
             ${mobileView === "chat" ? "hidden" : "flex"} md:flex
-            w-full md:w-80 lg:w-96 flex-col border-r border-cream-darker bg-white shrink-0
+            w-full md:w-80 lg:w-96 flex-col border-r border-cream-darker bg-white shrink-0 min-h-0
           `}
         >
-          <div className="px-5 py-4 border-b border-cream-darker">
+          <div className="px-5 py-4 border-b border-cream-darker shrink-0">
             <h2 className="text-lg font-bold text-warm-dark tracking-tight flex items-center gap-2">
               <MessageCircle className="w-5 h-5 text-primary" />
               Messages
             </h2>
           </div>
 
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto min-h-0">
             {conversations.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full py-16 px-6 text-center">
                 <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
@@ -356,7 +354,7 @@ function ChatPageInner() {
         <section
           className={`
             ${mobileView === "list" ? "hidden" : "flex"} md:flex
-            flex-1 flex-col bg-cream overflow-hidden
+            flex-1 flex-col overflow-hidden min-h-0
           `}
         >
           {!activeConv ? (
@@ -382,16 +380,16 @@ function ChatPageInner() {
                 <Avatar name={activeConv.name || "?"} src={activeConv.image} size="md" />
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-warm-dark leading-tight">
-                    {activeConv.name || <span className="text-warm-gray text-sm">Loading…</span>}
+                    {activeConv.name || <span className="text-warm-gray text-sm italic">Loading…</span>}
                   </p>
-                  <p className="text-xs text-primary font-medium">
-                    {otherTyping ? "typing…" : "Active now"}
-                  </p>
+                  {otherTyping && (
+                    <p className="text-xs text-primary font-medium">typing…</p>
+                  )}
                 </div>
               </div>
 
-              {/* Messages */}
-              <div className="flex-1 overflow-y-auto px-4 py-5 space-y-4">
+              {/* Messages — only this scrolls */}
+              <div className="flex-1 overflow-y-auto min-h-0 px-4 py-5 space-y-4 bg-cream">
                 {loadingMsgs && (
                   <div className="flex justify-center py-8">
                     <div className="w-6 h-6 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
@@ -399,7 +397,7 @@ function ChatPageInner() {
                 )}
 
                 {!loadingMsgs && messages.length === 0 && (
-                  <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <div className="flex flex-col items-center justify-center h-full text-center">
                     <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-3">
                       <MessageCircle className="w-7 h-7 text-primary" />
                     </div>
@@ -480,10 +478,9 @@ function ChatPageInner() {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Input bar */}
+              {/* Input bar — pinned to bottom */}
               <div className="bg-white border-t border-cream-darker px-4 py-3 shrink-0">
                 <div className="flex items-center gap-2 bg-cream rounded-2xl border border-cream-darker px-3 py-1.5 focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/10 transition-all">
-                  {/* Emoji button */}
                   <div className="relative">
                     <button
                       onClick={() => setShowEmoji((p) => !p)}
